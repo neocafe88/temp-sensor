@@ -24,3 +24,4 @@ find_package(aws-crt-cpp REQUIRED)
 
 target_link_libraries(${PROJECT_NAME} AWS::aws-crt-cpp)
 
+install(TARGETS tempsensor DESTINATION bin)
