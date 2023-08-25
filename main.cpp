@@ -4,6 +4,7 @@
  */
 
 #include <iostream>
+#include <fstream>
 #include <chrono>
 #include <thread>
 
@@ -133,11 +134,13 @@ class MqttHandler {
 	    return Aws::Crt::ErrorDebugString(_connection->LastError());
 	}
 
-	void publish(Aws::Crt::String& topic, Aws::Crt::ByteBuf& payload) {
+	void publish(Aws::Crt::String& topic, Aws::Crt::String &msg) {
 
             auto onPublishComplete = [](Mqtt::MqttConnection &, uint16_t, int) {
     		fprintf(stdout, "Published successfully...\n");
 	    };
+
+            Aws::Crt::ByteBuf payload = ByteBufFromArray((const uint8_t *)msg.data(), msg.length());
 
             _connection->Publish(topic.c_str(), AWS_MQTT_QOS_AT_LEAST_ONCE, false, 
 			    payload, onPublishComplete);
@@ -170,7 +173,7 @@ int main(int argc, char *argv[])
     }
 
     // Connect
-    fprintf(stdout, "Connecting...\n");
+    fprintf(stdout, "Connecting...******\n");
 
     if (!mqtt.connect()) 
     {
@@ -187,11 +190,30 @@ int main(int argc, char *argv[])
 
     /********** Publish *********/
 
+    /*
     Aws::Crt::String msg = "\"test message\"";
     Aws::Crt::ByteBuf payload = ByteBufFromArray((const uint8_t *)msg.data(), msg.length());
+    */
     Aws::Crt::String topic{"sdk/test/temp"};
 
-    mqtt.publish(topic, payload);
+    fprintf(stdout, "Reading from the sensor...\n");
+    
+    ifstream sensor;
+    string t;
+
+    sensor.open("/dev/tempdriver");
+
+    if (sensor.is_open()) {
+	getline(sensor, t);
+
+        Aws::Crt::String msg = t.c_str();
+
+	mqtt.publish(topic, msg);
+    } else {
+        Aws::Crt::String msg{"No data read"};
+        mqtt.publish(topic, msg);
+    }
+
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
